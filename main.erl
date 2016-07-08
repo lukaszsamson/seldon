@@ -12,6 +12,10 @@ stream(Events) ->
       io:format("getEvents rec~n", []),
       From ! Events,
       stream(Events);
+    {From, getVersion} ->
+      io:format("getVersion rec~n", []),
+      From ! Version,
+      stream(Events);
     {From, appendEvents, NewEvents, MaxVersion} ->
       io:format("appendEvents rec~n", []),
       case isVersionOk(Version, MaxVersion) of

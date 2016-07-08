@@ -2,8 +2,11 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+startStream(InitialEvents) ->
+  spawn(main, stream, [InitialEvents]).
+
 getEvents_returns_initial(InitialEvents) ->
-  S = spawn(main, stream, [InitialEvents]),
+  S = startStream(InitialEvents),
   S ! {self(), getEvents},
   receive
     Events ->
@@ -17,12 +20,31 @@ getEvents_returns_initial_empty_test() ->
 getEvents_returns_initial_nonempty_test() ->
   getEvents_returns_initial([2, 3, 5]).
 
-appendEvents(InitialEvents, NewEvents, ExpectedEvents, MaxVersion) ->
-  S = spawn(main, stream, [InitialEvents]),
+getVersion_returns_initial(InitialEvents, ExpectedResult) ->
+  S = startStream(InitialEvents),
+  S ! {self(), getVersion},
+  receive
+    Version ->
+      ?assert(Version =:= ExpectedResult)
+  end,
+  ok.
+
+getVersion_returns_initial_empty_test() ->
+  getVersion_returns_initial([], 0).
+
+getVersion_returns_initial_nonempty_test() ->
+  getVersion_returns_initial([2, 3, 5], 3).
+
+appendEventsCheckCommon(InitialEvents, NewEvents, MaxVersion) ->
+  S = startStream(InitialEvents),
   S ! {self(), appendEvents, NewEvents, MaxVersion},
   receive
     _ -> ok
   end,
+  S.
+
+appendEventsCheckEvents(InitialEvents, NewEvents, ExpectedEvents, MaxVersion) ->
+  S = appendEventsCheckCommon(InitialEvents, NewEvents, MaxVersion),
   S ! {self(), getEvents},
   receive
     Events ->
@@ -30,17 +52,35 @@ appendEvents(InitialEvents, NewEvents, ExpectedEvents, MaxVersion) ->
   end,
   ok.
 
-appendEvents_empty_test() ->
-  appendEvents([], [5], [5], -1).
+appendEvents_empty_should_append_test() ->
+  appendEventsCheckEvents([], [5], [5], -1).
 
-appendEvents_nonempty_test() ->
-  appendEvents([2, 3], [5], [2, 3, 5], -1).
+appendEvents_nonempty_should_append_test() ->
+  appendEventsCheckEvents([2, 3], [5], [2, 3, 5], -1).
 
 appendEvents_nonempty_should_not_append_if_wrong_version_test() ->
-  appendEvents([2, 3], [5], [2, 3], 1).
+  appendEventsCheckEvents([2, 3], [5], [2, 3], 1).
+
+appendEventsCheckVersion(InitialEvents, NewEvents, ExpectedVersion, MaxVersion) ->
+  S = appendEventsCheckCommon(InitialEvents, NewEvents, MaxVersion),
+  S ! {self(), getVersion},
+  receive
+    Version ->
+      ?assert(Version =:= ExpectedVersion)
+  end,
+  ok.
+
+appendEvents_empty_should_increase_version_test() ->
+  appendEventsCheckVersion([], [5], 1, -1).
+
+appendEvents_nonempty_increase_version_test() ->
+  appendEventsCheckVersion([2, 3], [5], 3, -1).
+
+appendEvents_nonempty_should_not_increase_version_if_wrong_version_test() ->
+  appendEventsCheckVersion([2, 3], [5], 2, 1).
 
 appendEventsVersionCheck(InitialEvents, NewEvents, MaxVersion, ExpectedResult) ->
-  S = spawn(main, stream, [InitialEvents]),
+  S = startStream(InitialEvents),
   S ! {self(), appendEvents, NewEvents, MaxVersion},
   receive
     Result -> ?assert(Result =:= ExpectedResult)
