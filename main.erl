@@ -30,8 +30,12 @@ stream(Events) ->
       io:format("getEvents rec~n", []),
       From ! Events,
       stream(Events);
+    {_From, appendEvents, NewEvents} ->
+      io:format("appendEvents rec~n", []),
+      stream(Events ++ NewEvents);
     _ ->
-      io:format("dupa rec~n", [])
+      io:format("dupa rec~n", []),
+      stream(Events)
   end.
 
 start() ->
