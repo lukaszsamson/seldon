@@ -35,17 +35,4 @@ stream(Events) ->
   end.
 
 start() ->
-  Events = [1, 2],
-  io:format("Spawning~n", []),
-  S = spawn(main, stream, [Events]),
-  io:format("Sending~n", []),
-  S ! {self(), getEvents},
-  io:format("Receiving~n", []),
-  receive
-    [] ->
-      io:format("1~n", []);
-    [_|_] ->
-      io:format("2~n", []);
-    _ ->
-      io:format("0~n", [])
-  end.
+  true.
