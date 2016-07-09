@@ -1,5 +1,5 @@
 -module(main).
--export([stream/1]).
+-export([startStream/1, startStreamRegistry/1, stream/1, streamRegistry/1]).
 
 isVersionOk(Version, MaxVersion) ->
   MaxVersion < 0 orelse Version =< MaxVersion.
@@ -8,15 +8,15 @@ stream(Events) ->
   io:format("Listening~n", []),
   Version = length(Events),
   receive
-    {From, getEvents} ->
+    {From, getEvents} when is_pid(From) ->
       io:format("getEvents rec~n", []),
       From ! Events,
       stream(Events);
-    {From, getVersion} ->
+    {From, getVersion} when is_pid(From) ->
       io:format("getVersion rec~n", []),
       From ! Version,
       stream(Events);
-    {From, appendEvents, NewEvents, MaxVersion} ->
+    {From, appendEvents, NewEvents, MaxVersion} when is_pid(From); is_list(NewEvents); is_integer(MaxVersion) ->
       io:format("appendEvents rec~n", []),
       case isVersionOk(Version, MaxVersion) of
         true ->
@@ -27,3 +27,22 @@ stream(Events) ->
           stream(Events)
       end
   end.
+
+startStream(InitialEvents) ->
+  io:format("Starting stream~n", []),
+  spawn(main, stream, [InitialEvents]).
+
+streamRegistry(Streams) ->
+  receive
+    {From, getStream, StreamId} when is_pid(From); is_atom(StreamId) ->
+      Stream = maps:get(StreamId, Streams, startStream([])),
+      From ! Stream,
+      streamRegistry(Streams#{StreamId => Stream});
+    {From, getStreams} when is_pid(From) ->
+      From ! Streams,
+      streamRegistry(Streams)
+  end.
+
+startStreamRegistry(InitialStreams) ->
+  io:format("Starting stream registry~n", []),
+  spawn(main, streamRegistry, [InitialStreams]).

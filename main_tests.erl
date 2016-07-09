@@ -2,11 +2,8 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
-startStream(InitialEvents) ->
-  spawn(main, stream, [InitialEvents]).
-
 getEvents_returns_initial(InitialEvents) ->
-  S = startStream(InitialEvents),
+  S = main:startStream(InitialEvents),
   S ! {self(), getEvents},
   receive
     Events ->
@@ -21,7 +18,7 @@ getEvents_returns_initial_nonempty_test() ->
   getEvents_returns_initial([2, 3, 5]).
 
 getVersion_returns_initial(InitialEvents, ExpectedResult) ->
-  S = startStream(InitialEvents),
+  S = main:startStream(InitialEvents),
   S ! {self(), getVersion},
   receive
     Version ->
@@ -36,7 +33,7 @@ getVersion_returns_initial_nonempty_test() ->
   getVersion_returns_initial([2, 3, 5], 3).
 
 appendEventsCheckCommon(InitialEvents, NewEvents, MaxVersion) ->
-  S = startStream(InitialEvents),
+  S = main:startStream(InitialEvents),
   S ! {self(), appendEvents, NewEvents, MaxVersion},
   receive
     _ -> ok
@@ -80,7 +77,7 @@ appendEvents_nonempty_should_not_increase_version_if_wrong_version_test() ->
   appendEventsCheckVersion([2, 3], [5], 2, 1).
 
 appendEventsVersionCheck(InitialEvents, NewEvents, MaxVersion, ExpectedResult) ->
-  S = startStream(InitialEvents),
+  S = main:startStream(InitialEvents),
   S ! {self(), appendEvents, NewEvents, MaxVersion},
   receive
     Result -> ?assert(Result =:= ExpectedResult)
@@ -107,3 +104,18 @@ appendEvents_nonempty_greaterVersion_test() ->
 
 appendEvents_nonempty_lowerVersion_test() ->
   appendEventsVersionCheck([2, 3], [5], 1, concurrencyError).
+
+streamRegistry_getStreams_should_return_initial_common(InitialStreams) ->
+  R = main:startStreamRegistry(InitialStreams),
+  R ! {self(), getStreams},
+  receive
+    Streams ->
+      ?assert(Streams =:= InitialStreams)
+  end,
+  ok.
+
+streamRegistry_getStreams_should_return_initial_empty_test() ->
+ streamRegistry_getStreams_should_return_initial_common(#{}).
+
+streamRegistry_getStreams_should_return_initial_nonempty_test() ->
+  streamRegistry_getStreams_should_return_initial_common(#{'streamid' => 'stream'}).
