@@ -35,9 +35,14 @@ startStream(InitialEvents) ->
 streamRegistry(Streams) ->
   receive
     {From, getStream, StreamId} when is_pid(From); is_atom(StreamId) ->
-      Stream = maps:get(StreamId, Streams, startStream([])),
+      {Stream, NewStreams} = case (maps:find(StreamId, Streams)) of
+        {ok, Value} -> {Value, Streams};
+        error ->
+          NewStream = startStream([]),
+          {NewStream, Streams#{StreamId => NewStream}}
+      end,
       From ! Stream,
-      streamRegistry(Streams#{StreamId => Stream});
+      streamRegistry(NewStreams);
     {From, getStreams} when is_pid(From) ->
       From ! Streams,
       streamRegistry(Streams)

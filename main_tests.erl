@@ -160,3 +160,16 @@ streamRegistry_getStream_should_start_a_valid_stream_test() ->
       ?assert(Version =:= 0)
   end,
   ok.
+
+streamRegistry_getStream_should_return_existing_stream_test() ->
+  R = main:startStreamRegistry(#{}),
+  R ! {self(), getStream, 'test'},
+  S1 = receive
+    Stream1 -> Stream1
+  end,
+  R ! {self(), getStream, 'test'},
+  S2 = receive
+    Stream2 -> Stream2
+  end,
+  ?assert(S1 =:= S2),
+  ok.
