@@ -119,3 +119,44 @@ streamRegistry_getStreams_should_return_initial_empty_test() ->
 
 streamRegistry_getStreams_should_return_initial_nonempty_test() ->
   streamRegistry_getStreams_should_return_initial_common(#{'streamid' => 'stream'}).
+
+streamRegistry_getStream_should_start_new_stream_test() ->
+  R = main:startStreamRegistry(#{}),
+  R ! {self(), getStream, 'test'},
+  receive
+    Stream ->
+      ?assert(is_pid(Stream))
+  end,
+  ok.
+
+streamRegistry_getStreams_should_return_newly_started_stream_common(InitialStreams) ->
+  R = main:startStreamRegistry(InitialStreams),
+  R ! {self(), getStream, 'test'},
+  S = receive
+    Stream -> Stream
+  end,
+  R ! {self(), getStreams},
+  receive
+    Streams ->
+      ?assert(InitialStreams#{'test' => S} =:= Streams)
+  end,
+  ok.
+
+streamRegistry_getStreams_should_return_newly_started_stream_empty_test() ->
+  streamRegistry_getStreams_should_return_newly_started_stream_common(#{}).
+
+streamRegistry_getStreams_should_return_newly_started_stream_nonempty_test() ->
+  streamRegistry_getStreams_should_return_newly_started_stream_common(#{'streamid' => 'stream'}).
+
+streamRegistry_getStream_should_start_a_valid_stream_test() ->
+  R = main:startStreamRegistry(#{}),
+  R ! {self(), getStream, 'test'},
+  S = receive
+    Stream -> Stream
+  end,
+  S ! {self(), getVersion},
+  receive
+    Version ->
+      ?assert(Version =:= 0)
+  end,
+  ok.
