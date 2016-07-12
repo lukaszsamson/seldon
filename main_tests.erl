@@ -173,3 +173,62 @@ streamRegistry_getStream_should_return_existing_stream_test() ->
   end,
   ?assert(S1 =:= S2),
   ok.
+
+observer_should_get_updates_test() ->
+  S = main:startStream([]),
+  S ! {self(), observe},
+  S ! {self(), appendEvents, [1], 0},
+  receive
+    _ -> ok
+  end,
+  receive
+    Events -> ?assert(Events =:= [1])
+  end.
+
+observer_should_get_updates_multiple_test() ->
+  S = main:startStream([]),
+  S ! {self(), observe},
+  S ! {self(), appendEvents, [1], 0},
+  receive
+    _ -> ok
+  end,
+  receive
+    Events -> ?assert(Events =:= [1])
+  end,
+  S ! {self(), appendEvents, [2, 3], 1},
+  receive
+    _ -> ok
+  end,
+  receive
+    Events1 -> ?assert(Events1 =:= [2, 3])
+  end.
+
+observer_should_get_updates_multiple_queued_test() ->
+  S = main:startStream([]),
+  Self = self(),
+  O = spawn(fun () ->
+    receive
+    after
+      10 -> ok
+    end,
+    receive
+      Events -> ?assert(Events =:= [1])
+    end,
+    receive
+      Events1 -> ?assert(Events1 =:= [2, 3])
+    end,
+    Self ! ok
+  end),
+  S ! {O, observe},
+
+  S ! {self(), appendEvents, [1], 0},
+  receive
+    _ -> ok
+  end,
+  S ! {self(), appendEvents, [2, 3], 1},
+  receive
+    ack -> ok
+  end,
+  receive
+    ok -> ok
+  end.

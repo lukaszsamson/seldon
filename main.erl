@@ -1,36 +1,41 @@
 -module(main).
--export([startStream/1, startStreamRegistry/1, stream/1, streamRegistry/1]).
+-export([startStream/1, startStreamRegistry/1, stream/2, streamRegistry/1]).
 
 isVersionOk(Version, MaxVersion) ->
   MaxVersion < 0 orelse Version =< MaxVersion.
 
-stream(Events) ->
+getVersion(Events) -> length(Events).
+
+stream(Events, Observers) ->
   io:format("Listening~n", []),
-  Version = length(Events),
+  Version = getVersion(Events),
   receive
+    {From, observe} when is_pid(From) ->
+      stream(Events, Observers ++ [From]);
     {From, getEvents} when is_pid(From) ->
       io:format("getEvents rec~n", []),
       From ! Events,
-      stream(Events);
+      stream(Events, Observers);
     {From, getVersion} when is_pid(From) ->
       io:format("getVersion rec~n", []),
       From ! Version,
-      stream(Events);
+      stream(Events, Observers);
     {From, appendEvents, NewEvents, MaxVersion} when is_pid(From); is_list(NewEvents); is_integer(MaxVersion) ->
       io:format("appendEvents rec~n", []),
       case isVersionOk(Version, MaxVersion) of
         true ->
           From ! ack,
-          stream(Events ++ NewEvents);
+          lists:foreach(fun (O) -> O ! NewEvents end, Observers),
+          stream(Events ++ NewEvents, Observers);
         false ->
           From ! concurrencyError,
-          stream(Events)
+          stream(Events, Observers)
       end
   end.
 
 startStream(InitialEvents) ->
   io:format("Starting stream~n", []),
-  spawn(main, stream, [InitialEvents]).
+  spawn(main, stream, [InitialEvents, []]).
 
 streamRegistry(Streams) ->
   receive
