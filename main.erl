@@ -12,6 +12,8 @@ stream(Events, Observers) ->
   receive
     {From, observe} when is_pid(From) ->
       stream(Events, Observers ++ [From]);
+    {From, unobserve} when is_pid(From) ->
+      stream(Events, Observers -- [From]);
     {From, getEvents} when is_pid(From) ->
       io:format("getEvents rec~n", []),
       From ! Events,
