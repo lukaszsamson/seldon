@@ -34,8 +34,9 @@ appendEventsCheckCommon(InitialEvents, NewEvents, MaxVersion) ->
   S = main:startStream(InitialEvents),
   S ! {self(), appendEvents, NewEvents, MaxVersion},
   receive
-    ack -> ok
-  end.
+    _ -> ok
+  end,
+  S.
 
 appendEventsCheckEvents(InitialEvents, NewEvents, ExpectedEvents, MaxVersion) ->
   S = appendEventsCheckCommon(InitialEvents, NewEvents, MaxVersion),
