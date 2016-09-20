@@ -3,9 +3,14 @@
 -include_lib("eunit/include/eunit.hrl").
 
 startMockStore() ->
-  spawn(fun () ->
+  startMockStore(ok).
+
+startMockStore(Result) ->
+  spawn(fun MockStore() ->
     receive
-      _ -> ok
+      {Sender, save, _, _} ->
+        Sender ! Result,
+        MockStore()
     end
   end).
 
@@ -36,6 +41,13 @@ getVersion_returns_initial_empty_test() ->
 
 getVersion_returns_initial_nonempty_test() ->
   getVersion_returns_initial([2, 3, 5], 3).
+
+appendEvents_should_return_error_if_not_stored_test() ->
+  S = main:startStream(id1, [], startMockStore(error)),
+  S ! {self(), appendEvents, [1], 0},
+  receive
+    Response -> ?assert(Response =:= error)
+  end.
 
 appendEventsCheckCommon(InitialEvents, NewEvents, MaxVersion) ->
   S = main:startStream(id1, InitialEvents, startMockStore()),

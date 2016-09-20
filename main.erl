@@ -26,9 +26,22 @@ stream(Id, Events, Store, Observers) ->
       io:format("appendEvents rec~n", []),
       case isVersionOk(Version, MaxVersion) of
         true ->
-          From ! ack,
-          lists:foreach(fun (O) -> O ! NewEvents end, Observers),
-          stream(Id, Events ++ NewEvents, Store, Observers);
+          UpdatedEvents = Events ++ NewEvents,
+          Store ! {self(), save, Id, UpdatedEvents},
+          receive
+            ok ->
+              From ! ack,
+              lists:foreach(fun (O) -> O ! NewEvents end, Observers),
+              stream(Id, UpdatedEvents, Store, Observers);
+            Error ->
+              From ! Error,
+              stream(Id, Events, Store, Observers)
+          after
+            100 ->
+              io:format("store timeout~n", []),
+              From ! timeout,
+              stream(Id, Events, Store, Observers)
+          end;
         false ->
           From ! concurrencyError,
           stream(Id, Events, Store, Observers)
