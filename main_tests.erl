@@ -3,7 +3,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 getEvents_returns_initial(InitialEvents) ->
-  S = main:startStream(InitialEvents),
+  S = main:startStream(id1, InitialEvents),
   S ! {self(), getEvents},
   receive
     Events ->
@@ -17,7 +17,7 @@ getEvents_returns_initial_nonempty_test() ->
   getEvents_returns_initial([2, 3, 5]).
 
 getVersion_returns_initial(InitialEvents, ExpectedResult) ->
-  S = main:startStream(InitialEvents),
+  S = main:startStream(id1, InitialEvents),
   S ! {self(), getVersion},
   receive
     Version ->
@@ -31,7 +31,7 @@ getVersion_returns_initial_nonempty_test() ->
   getVersion_returns_initial([2, 3, 5], 3).
 
 appendEventsCheckCommon(InitialEvents, NewEvents, MaxVersion) ->
-  S = main:startStream(InitialEvents),
+  S = main:startStream(id1, InitialEvents),
   S ! {self(), appendEvents, NewEvents, MaxVersion},
   receive
     _ -> ok
@@ -73,7 +73,7 @@ appendEvents_nonempty_should_not_increase_version_if_wrong_version_test() ->
   appendEventsCheckVersion([2, 3], [5], 2, 1).
 
 appendEventsVersionCheck(InitialEvents, NewEvents, MaxVersion, ExpectedResult) ->
-  S = main:startStream(InitialEvents),
+  S = main:startStream(id1, InitialEvents),
   S ! {self(), appendEvents, NewEvents, MaxVersion},
   receive
     Result -> ?assert(Result =:= ExpectedResult)
@@ -165,7 +165,7 @@ streamRegistry_getStream_should_return_existing_stream_test() ->
   ?assert(S1 =:= S2).
 
 observer_should_get_updates_test() ->
-  S = main:startStream([]),
+  S = main:startStream(id1, []),
   S ! {self(), observe},
   S ! {self(), appendEvents, [1], 0},
   receive
@@ -176,7 +176,7 @@ observer_should_get_updates_test() ->
   end.
 
 observer_should_get_updates_multiple_test() ->
-  S = main:startStream([]),
+  S = main:startStream(id1, []),
   S ! {self(), observe},
   S ! {self(), appendEvents, [1], 0},
   receive
@@ -194,7 +194,7 @@ observer_should_get_updates_multiple_test() ->
   end.
 
 unobserve_should_end_subscription_test() ->
-  S = main:startStream([]),
+  S = main:startStream(id1, []),
   S ! {self(), observe},
   S ! {self(), unobserve},
   S ! {self(), appendEvents, [1], 0},
@@ -208,7 +208,7 @@ unobserve_should_end_subscription_test() ->
   end.
 
 observer_should_get_updates_multiple_queued_test() ->
-  S = main:startStream([]),
+  S = main:startStream(id1, []),
   Self = self(),
   O = spawn(fun () ->
     receive
@@ -238,7 +238,7 @@ observer_should_get_updates_multiple_queued_test() ->
   end.
 
 observer_should_not_kill_stream_test() ->
-  S = main:startStream([]),
+  S = main:startStream(id1, []),
   O = spawn(fun () ->
     receive
       Events -> ?assert(Events =:= [1])
