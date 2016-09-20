@@ -1,5 +1,5 @@
 -module(main).
--export([startStream/1, startStreamRegistry/1, stream/2, streamRegistry/1]).
+-export([startStream/1, startStreamRegistry/1, stream/2, streamRegistry/1, store/1, startStore/1]).
 
 isVersionOk(Version, MaxVersion) ->
   MaxVersion < 0 orelse Version =< MaxVersion.
@@ -58,3 +58,21 @@ streamRegistry(Streams) ->
 startStreamRegistry(InitialStreams) ->
   io:format("Starting stream registry~n", []),
   spawn(main, streamRegistry, [InitialStreams]).
+
+store(StreamsEvents) ->
+  receive
+    {From, save, StreamId, Events} when is_pid(From); is_atom(StreamId); is_list(Events) ->
+      From ! ok,
+      store(StreamsEvents#{StreamId => Events});
+    {From, load, StreamId} when is_pid(From); is_atom(StreamId) ->
+      Events = case (maps:find(StreamId, StreamsEvents)) of
+        {ok, Value} -> Value;
+        error -> []
+      end,
+      From ! Events,
+      store(StreamsEvents)
+  end.
+
+  startStore(StreamsEvents) ->
+    io:format("Starting store~n", []),
+    spawn(main, store, [StreamsEvents]).
