@@ -2,8 +2,15 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+startMockStore() ->
+  spawn(fun () ->
+    receive
+      _ -> ok
+    end
+  end).
+
 getEvents_returns_initial(InitialEvents) ->
-  S = main:startStream(id1, InitialEvents),
+  S = main:startStream(id1, InitialEvents, startMockStore()),
   S ! {self(), getEvents},
   receive
     Events ->
@@ -17,7 +24,7 @@ getEvents_returns_initial_nonempty_test() ->
   getEvents_returns_initial([2, 3, 5]).
 
 getVersion_returns_initial(InitialEvents, ExpectedResult) ->
-  S = main:startStream(id1, InitialEvents),
+  S = main:startStream(id1, InitialEvents, startMockStore()),
   S ! {self(), getVersion},
   receive
     Version ->
@@ -31,7 +38,7 @@ getVersion_returns_initial_nonempty_test() ->
   getVersion_returns_initial([2, 3, 5], 3).
 
 appendEventsCheckCommon(InitialEvents, NewEvents, MaxVersion) ->
-  S = main:startStream(id1, InitialEvents),
+  S = main:startStream(id1, InitialEvents, startMockStore()),
   S ! {self(), appendEvents, NewEvents, MaxVersion},
   receive
     _ -> ok
@@ -73,7 +80,7 @@ appendEvents_nonempty_should_not_increase_version_if_wrong_version_test() ->
   appendEventsCheckVersion([2, 3], [5], 2, 1).
 
 appendEventsVersionCheck(InitialEvents, NewEvents, MaxVersion, ExpectedResult) ->
-  S = main:startStream(id1, InitialEvents),
+  S = main:startStream(id1, InitialEvents, startMockStore()),
   S ! {self(), appendEvents, NewEvents, MaxVersion},
   receive
     Result -> ?assert(Result =:= ExpectedResult)
@@ -101,7 +108,7 @@ appendEvents_nonempty_lowerVersion_test() ->
   appendEventsVersionCheck([2, 3], [5], 1, concurrencyError).
 
 streamRegistry_getStreams_should_return_initial_common(InitialStreams) ->
-  R = main:startStreamRegistry(InitialStreams),
+  R = main:startStreamRegistry(InitialStreams, startMockStore()),
   R ! {self(), getStreams},
   receive
     Streams ->
@@ -115,7 +122,7 @@ streamRegistry_getStreams_should_return_initial_nonempty_test() ->
   streamRegistry_getStreams_should_return_initial_common(#{'streamid' => 'stream'}).
 
 streamRegistry_getStream_should_start_new_stream_test() ->
-  R = main:startStreamRegistry(#{}),
+  R = main:startStreamRegistry(#{}, startMockStore()),
   R ! {self(), getStream, 'test'},
   receive
     Stream ->
@@ -123,7 +130,7 @@ streamRegistry_getStream_should_start_new_stream_test() ->
   end.
 
 streamRegistry_getStreams_should_return_newly_started_stream_common(InitialStreams) ->
-  R = main:startStreamRegistry(InitialStreams),
+  R = main:startStreamRegistry(InitialStreams, startMockStore()),
   R ! {self(), getStream, 'test'},
   S = receive
     Stream -> Stream
@@ -141,7 +148,7 @@ streamRegistry_getStreams_should_return_newly_started_stream_nonempty_test() ->
   streamRegistry_getStreams_should_return_newly_started_stream_common(#{'streamid' => 'stream'}).
 
 streamRegistry_getStream_should_start_a_valid_stream_test() ->
-  R = main:startStreamRegistry(#{}),
+  R = main:startStreamRegistry(#{}, startMockStore()),
   R ! {self(), getStream, 'test'},
   S = receive
     Stream -> Stream
@@ -153,7 +160,7 @@ streamRegistry_getStream_should_start_a_valid_stream_test() ->
   end.
 
 streamRegistry_getStream_should_return_existing_stream_test() ->
-  R = main:startStreamRegistry(#{}),
+  R = main:startStreamRegistry(#{}, startMockStore()),
   R ! {self(), getStream, 'test'},
   S1 = receive
     Stream1 -> Stream1
@@ -165,7 +172,7 @@ streamRegistry_getStream_should_return_existing_stream_test() ->
   ?assert(S1 =:= S2).
 
 observer_should_get_updates_test() ->
-  S = main:startStream(id1, []),
+  S = main:startStream(id1, [], startMockStore()),
   S ! {self(), observe},
   S ! {self(), appendEvents, [1], 0},
   receive
@@ -176,7 +183,7 @@ observer_should_get_updates_test() ->
   end.
 
 observer_should_get_updates_multiple_test() ->
-  S = main:startStream(id1, []),
+  S = main:startStream(id1, [], startMockStore()),
   S ! {self(), observe},
   S ! {self(), appendEvents, [1], 0},
   receive
@@ -194,7 +201,7 @@ observer_should_get_updates_multiple_test() ->
   end.
 
 unobserve_should_end_subscription_test() ->
-  S = main:startStream(id1, []),
+  S = main:startStream(id1, [], startMockStore()),
   S ! {self(), observe},
   S ! {self(), unobserve},
   S ! {self(), appendEvents, [1], 0},
@@ -208,7 +215,7 @@ unobserve_should_end_subscription_test() ->
   end.
 
 observer_should_get_updates_multiple_queued_test() ->
-  S = main:startStream(id1, []),
+  S = main:startStream(id1, [], startMockStore()),
   Self = self(),
   O = spawn(fun () ->
     receive
@@ -238,7 +245,7 @@ observer_should_get_updates_multiple_queued_test() ->
   end.
 
 observer_should_not_kill_stream_test() ->
-  S = main:startStream(id1, []),
+  S = main:startStream(id1, [], startMockStore()),
   O = spawn(fun () ->
     receive
       Events -> ?assert(Events =:= [1])
