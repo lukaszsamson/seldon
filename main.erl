@@ -57,7 +57,7 @@ streamRegistry(Store) ->
 
 streamRegistry(Streams, Store) ->
   receive
-    {From, getStream, StreamId} when is_pid(From); is_atom(StreamId) ->
+    {From, getStream, StreamId} when is_pid(From); is_list(StreamId) ->
       {Response, NewStreams} = case (maps:find(StreamId, Streams)) of
         {ok, Value} -> {{ok, Value}, Streams};
         error ->
@@ -90,10 +90,11 @@ startStreamRegistry(Store) ->
 
 store(StreamsEvents) ->
   receive
-    {From, save, StreamId, Events} when is_pid(From); is_atom(StreamId); is_list(Events) ->
+    {From, save, StreamId, Events} when is_pid(From); is_list(StreamId); is_list(Events) ->
+      % TODO validate StreamId with io_lib:printable_unicode_list(Term) -> boolean()
       From ! ok,
       store(StreamsEvents#{StreamId => Events});
-    {From, load, StreamId} when is_pid(From); is_atom(StreamId) ->
+    {From, load, StreamId} when is_pid(From); is_list(StreamId) ->
       Events = case (maps:find(StreamId, StreamsEvents)) of
         {ok, Value} -> Value;
         error -> []

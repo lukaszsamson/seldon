@@ -18,7 +18,7 @@ startMockStore(Result, InitialEvents) ->
   end).
 
 getEvents_returns_initial(InitialEvents) ->
-  S = main:startStream(id1, InitialEvents, startMockStore()),
+  S = main:startStream("id1", InitialEvents, startMockStore()),
   S ! {self(), getEvents},
   receive
     Events ->
@@ -32,7 +32,7 @@ getEvents_returns_initial_nonempty_test() ->
   getEvents_returns_initial([2, 3, 5]).
 
 getVersion_returns_initial(InitialEvents, ExpectedResult) ->
-  S = main:startStream(id1, InitialEvents, startMockStore()),
+  S = main:startStream("id1", InitialEvents, startMockStore()),
   S ! {self(), getVersion},
   receive
     Version ->
@@ -46,14 +46,14 @@ getVersion_returns_initial_nonempty_test() ->
   getVersion_returns_initial([2, 3, 5], 3).
 
 appendEvents_should_return_error_if_not_stored_test() ->
-  S = main:startStream(id1, [], startMockStore(error, [])),
+  S = main:startStream("id1", [], startMockStore(error, [])),
   S ! {self(), appendEvents, [1], 0},
   receive
     Response -> ?assert(Response =:= error)
   end.
 
 appendEventsCheckCommon(InitialEvents, NewEvents, MaxVersion) ->
-  S = main:startStream(id1, InitialEvents, startMockStore()),
+  S = main:startStream("id1", InitialEvents, startMockStore()),
   S ! {self(), appendEvents, NewEvents, MaxVersion},
   receive
     _ -> ok
@@ -95,7 +95,7 @@ appendEvents_nonempty_should_not_increase_version_if_wrong_version_test() ->
   appendEventsCheckVersion([2, 3], [5], 2, 1).
 
 appendEventsVersionCheck(InitialEvents, NewEvents, MaxVersion, ExpectedResult) ->
-  S = main:startStream(id1, InitialEvents, startMockStore()),
+  S = main:startStream("id1", InitialEvents, startMockStore()),
   S ! {self(), appendEvents, NewEvents, MaxVersion},
   receive
     Result -> ?assert(Result =:= ExpectedResult)
@@ -132,7 +132,7 @@ streamRegistry_getStreams_should_return_initial_empty_test() ->
 
 streamRegistry_getStream_should_start_new_stream_test() ->
   R = main:startStreamRegistry(startMockStore()),
-  R ! {self(), getStream, 'test'},
+  R ! {self(), getStream, "test"},
   receive
     {ok, Stream} ->
       ?assert(is_pid(Stream))
@@ -140,7 +140,7 @@ streamRegistry_getStream_should_start_new_stream_test() ->
 
 streamRegistry_getStream_should_load_from_store_test() ->
   R = main:startStreamRegistry(startMockStore(ok, [1])),
-  R ! {self(), getStream, 'test'},
+  R ! {self(), getStream, "test"},
   S = receive
     {ok, Stream} -> Stream
   end,
@@ -152,19 +152,19 @@ streamRegistry_getStream_should_load_from_store_test() ->
 
 streamRegistry_getStreams_should_return_newly_started_stream_empty_test() ->
   R = main:startStreamRegistry(startMockStore()),
-  R ! {self(), getStream, 'test'},
+  R ! {self(), getStream, "test"},
   S = receive
     {ok, Stream} -> Stream
   end,
   R ! {self(), getStreams},
   receive
     Streams ->
-      ?assert(#{'test' => S} =:= Streams)
+      ?assert(#{"test" => S} =:= Streams)
   end.
 
 streamRegistry_getStream_should_start_a_valid_stream_test() ->
   R = main:startStreamRegistry(startMockStore()),
-  R ! {self(), getStream, 'test'},
+  R ! {self(), getStream, "test"},
   S = receive
     {ok, Stream} -> Stream
   end,
@@ -176,18 +176,18 @@ streamRegistry_getStream_should_start_a_valid_stream_test() ->
 
 streamRegistry_getStream_should_return_existing_stream_test() ->
   R = main:startStreamRegistry(startMockStore()),
-  R ! {self(), getStream, 'test'},
+  R ! {self(), getStream, "test"},
   S1 = receive
     {ok, Stream1} -> Stream1
   end,
-  R ! {self(), getStream, 'test'},
+  R ! {self(), getStream, "test"},
   S2 = receive
     {ok, Stream2} -> Stream2
   end,
   ?assert(S1 =:= S2).
 
 observer_should_get_updates_test() ->
-  S = main:startStream(id1, [], startMockStore()),
+  S = main:startStream("id1", [], startMockStore()),
   S ! {self(), observe},
   S ! {self(), appendEvents, [1], 0},
   receive
@@ -198,7 +198,7 @@ observer_should_get_updates_test() ->
   end.
 
 observer_should_get_updates_multiple_test() ->
-  S = main:startStream(id1, [], startMockStore()),
+  S = main:startStream("id1", [], startMockStore()),
   S ! {self(), observe},
   S ! {self(), appendEvents, [1], 0},
   receive
@@ -216,7 +216,7 @@ observer_should_get_updates_multiple_test() ->
   end.
 
 unobserve_should_end_subscription_test() ->
-  S = main:startStream(id1, [], startMockStore()),
+  S = main:startStream("id1", [], startMockStore()),
   S ! {self(), observe},
   S ! {self(), unobserve},
   S ! {self(), appendEvents, [1], 0},
@@ -230,7 +230,7 @@ unobserve_should_end_subscription_test() ->
   end.
 
 observer_should_get_updates_multiple_queued_test() ->
-  S = main:startStream(id1, [], startMockStore()),
+  S = main:startStream("id1", [], startMockStore()),
   Self = self(),
   O = spawn(fun () ->
     receive
@@ -260,7 +260,7 @@ observer_should_get_updates_multiple_queued_test() ->
   end.
 
 observer_should_not_kill_stream_test() ->
-  S = main:startStream(id1, [], startMockStore()),
+  S = main:startStream("id1", [], startMockStore()),
   O = spawn(fun () ->
     receive
       Events -> ?assert(Events =:= [1])
@@ -284,36 +284,36 @@ observer_should_not_kill_stream_test() ->
 
 store_should_return_empty_list_for_new_streamId_test() ->
   S = main:startStore(#{}),
-  S ! {self(), load, stream1},
+  S ! {self(), load, "stream1"},
   receive
     Events -> ?assert(Events =:= [])
   end.
 
 store_should_return_events_list_for_known_streamId_test() ->
-  S = main:startStore(#{stream1 => [1]}),
-  S ! {self(), load, stream1},
+  S = main:startStore(#{"stream1" => [1]}),
+  S ! {self(), load, "stream1"},
   receive
     Events -> ?assert(Events =:= [1])
   end.
 
 store_should_store_events_list_for_new_streamId_test() ->
   S = main:startStore(#{}),
-  S ! {self(), save, stream1, [1]},
+  S ! {self(), save, "stream1", [1]},
   receive
     ok -> ok
   end,
-  S ! {self(), load, stream1},
+  S ! {self(), load, "stream1"},
   receive
     Events -> ?assert(Events =:= [1])
   end.
 
 store_should_store_events_list_for_known_streamId_test() ->
-  S = main:startStore(#{stream1 => [1]}),
-  S ! {self(), save, stream1, [1, 2]},
+  S = main:startStore(#{"stream1" => [1]}),
+  S ! {self(), save, "stream1", [1, 2]},
   receive
     ok -> ok
   end,
-  S ! {self(), load, stream1},
+  S ! {self(), load, "stream1"},
   receive
     Events -> ?assert(Events =:= [1, 2])
   end.
