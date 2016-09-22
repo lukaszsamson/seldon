@@ -1,5 +1,5 @@
 -module(main).
--export([startStream/3, startStreamRegistry/1, stream/4, streamRegistry/2, store/1, startStore/1]).
+-export([startStream/3, startStreamRegistry/1, startStore/1]).
 
 isVersionOk(Version, MaxVersion) ->
   MaxVersion < 0 orelse Version =< MaxVersion.
@@ -50,7 +50,7 @@ stream(Id, Events, Store, Observers) ->
 
 startStream(Id, InitialEvents, Store) ->
   io:format("Starting stream~n", []),
-  spawn(main, stream, [Id, InitialEvents, Store, []]).
+  spawn(fun () -> stream(Id, InitialEvents, Store, []) end).
 
 streamRegistry(Store) ->
   streamRegistry(#{}, Store).
@@ -104,4 +104,4 @@ store(StreamsEvents) ->
 
   startStore(StreamsEvents) ->
     io:format("Starting store~n", []),
-    spawn(main, store, [StreamsEvents]).
+    spawn(fun () -> store(StreamsEvents) end).
