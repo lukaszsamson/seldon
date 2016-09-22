@@ -7,7 +7,6 @@ isVersionOk(Version, MaxVersion) ->
 getVersion(Events) -> length(Events).
 
 stream(Id, Events, Store, Observers) ->
-  io:format("Listening~n", []),
   Version = getVersion(Events),
   receive
     {From, observe} when is_pid(From) ->
@@ -15,15 +14,12 @@ stream(Id, Events, Store, Observers) ->
     {From, unobserve} when is_pid(From) ->
       stream(Id, Events, Store, Observers -- [From]);
     {From, getEvents} when is_pid(From) ->
-      io:format("getEvents rec~n", []),
       From ! Events,
       stream(Id, Events, Store, Observers);
     {From, getVersion} when is_pid(From) ->
-      io:format("getVersion rec~n", []),
       From ! Version,
       stream(Id, Events, Store, Observers);
     {From, appendEvents, NewEvents, MaxVersion} when is_pid(From); is_list(NewEvents); is_integer(MaxVersion) ->
-      io:format("appendEvents rec~n", []),
       case isVersionOk(Version, MaxVersion) of
         true ->
           UpdatedEvents = Events ++ NewEvents,
@@ -38,7 +34,6 @@ stream(Id, Events, Store, Observers) ->
               stream(Id, Events, Store, Observers)
           after
             100 ->
-              io:format("store timeout~n", []),
               From ! timeout,
               stream(Id, Events, Store, Observers)
           end;
@@ -49,5 +44,4 @@ stream(Id, Events, Store, Observers) ->
   end.
 
 startStream(Id, InitialEvents, Store) ->
-  io:format("Starting stream~n", []),
   spawn(fun () -> stream(Id, InitialEvents, Store, []) end).

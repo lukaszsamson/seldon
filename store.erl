@@ -20,5 +20,4 @@ startStore() ->
   startStore(#{}).
 
 startStore(StreamsEvents) ->
-  io:format("Starting store~n", []),
   spawn(fun () -> store(StreamsEvents) end).
