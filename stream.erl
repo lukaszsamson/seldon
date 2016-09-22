@@ -1,10 +1,13 @@
 -module(stream).
--export([startStream/3]).
+-export([stream/3]).
 
 isVersionOk(Version, MaxVersion) ->
   MaxVersion < 0 orelse Version =< MaxVersion.
 
 getVersion(Events) -> length(Events).
+
+stream(Id, Events, Store) ->
+  stream(Id, Events, Store, []).
 
 stream(Id, Events, Store, Observers) ->
   Version = getVersion(Events),
@@ -42,6 +45,3 @@ stream(Id, Events, Store, Observers) ->
           stream(Id, Events, Store, Observers)
       end
   end.
-
-startStream(Id, InitialEvents, Store) ->
-  spawn(fun () -> stream(Id, InitialEvents, Store, []) end).

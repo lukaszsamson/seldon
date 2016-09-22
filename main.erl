@@ -2,8 +2,8 @@
 -export([bootstrap/0]).
 
 bootstrap() ->
-  Store = store:startStore(),
-  _ = stream_registry:startStreamRegistry(Store, fun stream:startStream/3),
+  Store = spawn_link(fun () -> store:store() end),
+  _ = spawn_link(fun () -> stream_registry:streamRegistry(Store, fun stream:stream/3) end),
   receive
   after
     10 -> ok

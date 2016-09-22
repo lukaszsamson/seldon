@@ -1,5 +1,8 @@
 -module(store).
--export([startStore/0, startStore/1]).
+-export([store/0, store/1]).
+
+store() ->
+  store(#{}).
 
 store(StreamsEvents) ->
   receive
@@ -15,9 +18,3 @@ store(StreamsEvents) ->
       From ! Events,
       store(StreamsEvents)
   end.
-
-startStore() ->
-  startStore(#{}).
-
-startStore(StreamsEvents) ->
-  spawn(fun () -> store(StreamsEvents) end).

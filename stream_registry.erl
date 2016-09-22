@@ -1,5 +1,5 @@
 -module(stream_registry).
--export([startStreamRegistry/2]).
+-export([streamRegistry/2]).
 
 streamRegistry(Store, StartStream) ->
   streamRegistry(#{}, Store, StartStream).
@@ -12,7 +12,9 @@ streamRegistry(Streams, Store, StartStream) ->
         error ->
           case load(Store, StreamId) of
             {ok, Events} ->
-              NewStream = StartStream(StreamId, Events, Store),
+              NewStream = spawn_link(fun () ->
+                StartStream(StreamId, Events, Store)
+              end),
               {{ok, NewStream}, Streams#{StreamId => NewStream}};
             timeout ->
               {timeout, Streams}
@@ -32,6 +34,3 @@ load(Store, StreamId) ->
   after
     1000 -> timeout
   end.
-
-startStreamRegistry(Store, StartStream) ->
-  spawn(fun () -> streamRegistry(Store, StartStream) end).
