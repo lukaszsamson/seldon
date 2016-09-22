@@ -122,22 +122,16 @@ appendEvents_nonempty_greaterVersion_test() ->
 appendEvents_nonempty_lowerVersion_test() ->
   appendEventsVersionCheck([2, 3], [5], 1, concurrencyError).
 
-streamRegistry_getStreams_should_return_initial_common(InitialStreams) ->
-  R = main:startStreamRegistry(InitialStreams, startMockStore()),
-  R ! {self(), getStreams},
-  receive
-    Streams ->
-      ?assert(Streams =:= InitialStreams)
-  end.
-
 streamRegistry_getStreams_should_return_initial_empty_test() ->
- streamRegistry_getStreams_should_return_initial_common(#{}).
-
-streamRegistry_getStreams_should_return_initial_nonempty_test() ->
-  streamRegistry_getStreams_should_return_initial_common(#{'streamid' => 'stream'}).
+ R = main:startStreamRegistry(startMockStore()),
+ R ! {self(), getStreams},
+ receive
+   Streams ->
+     ?assert(Streams =:= #{})
+ end.
 
 streamRegistry_getStream_should_start_new_stream_test() ->
-  R = main:startStreamRegistry(#{}, startMockStore()),
+  R = main:startStreamRegistry(startMockStore()),
   R ! {self(), getStream, 'test'},
   receive
     {ok, Stream} ->
@@ -145,7 +139,7 @@ streamRegistry_getStream_should_start_new_stream_test() ->
   end.
 
 streamRegistry_getStream_should_load_from_store_test() ->
-  R = main:startStreamRegistry(#{}, startMockStore(ok, [1])),
+  R = main:startStreamRegistry(startMockStore(ok, [1])),
   R ! {self(), getStream, 'test'},
   S = receive
     {ok, Stream} -> Stream
@@ -156,8 +150,8 @@ streamRegistry_getStream_should_load_from_store_test() ->
       ?assert(Events =:= [1])
   end.
 
-streamRegistry_getStreams_should_return_newly_started_stream_common(InitialStreams) ->
-  R = main:startStreamRegistry(InitialStreams, startMockStore()),
+streamRegistry_getStreams_should_return_newly_started_stream_empty_test() ->
+  R = main:startStreamRegistry(startMockStore()),
   R ! {self(), getStream, 'test'},
   S = receive
     {ok, Stream} -> Stream
@@ -165,17 +159,11 @@ streamRegistry_getStreams_should_return_newly_started_stream_common(InitialStrea
   R ! {self(), getStreams},
   receive
     Streams ->
-      ?assert(InitialStreams#{'test' => S} =:= Streams)
+      ?assert(#{'test' => S} =:= Streams)
   end.
 
-streamRegistry_getStreams_should_return_newly_started_stream_empty_test() ->
-  streamRegistry_getStreams_should_return_newly_started_stream_common(#{}).
-
-streamRegistry_getStreams_should_return_newly_started_stream_nonempty_test() ->
-  streamRegistry_getStreams_should_return_newly_started_stream_common(#{'streamid' => 'stream'}).
-
 streamRegistry_getStream_should_start_a_valid_stream_test() ->
-  R = main:startStreamRegistry(#{}, startMockStore()),
+  R = main:startStreamRegistry(startMockStore()),
   R ! {self(), getStream, 'test'},
   S = receive
     {ok, Stream} -> Stream
@@ -187,7 +175,7 @@ streamRegistry_getStream_should_start_a_valid_stream_test() ->
   end.
 
 streamRegistry_getStream_should_return_existing_stream_test() ->
-  R = main:startStreamRegistry(#{}, startMockStore()),
+  R = main:startStreamRegistry(startMockStore()),
   R ! {self(), getStream, 'test'},
   S1 = receive
     {ok, Stream1} -> Stream1

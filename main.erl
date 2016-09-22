@@ -1,5 +1,5 @@
 -module(main).
--export([startStream/3, startStreamRegistry/2, stream/4, streamRegistry/2, store/1, startStore/1]).
+-export([startStream/3, startStreamRegistry/1, stream/4, streamRegistry/2, store/1, startStore/1]).
 
 isVersionOk(Version, MaxVersion) ->
   MaxVersion < 0 orelse Version =< MaxVersion.
@@ -52,6 +52,9 @@ startStream(Id, InitialEvents, Store) ->
   io:format("Starting stream~n", []),
   spawn(main, stream, [Id, InitialEvents, Store, []]).
 
+streamRegistry(Store) ->
+  streamRegistry(#{}, Store).
+
 streamRegistry(Streams, Store) ->
   receive
     {From, getStream, StreamId} when is_pid(From); is_atom(StreamId) ->
@@ -81,9 +84,9 @@ load(Store, StreamId) ->
     1000 -> timeout
   end.
 
-startStreamRegistry(InitialStreams, Store) ->
+startStreamRegistry(Store) ->
   io:format("Starting stream registry~n", []),
-  spawn(main, streamRegistry, [InitialStreams, Store]).
+  spawn(fun () -> streamRegistry(Store) end).
 
 store(StreamsEvents) ->
   receive
