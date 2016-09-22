@@ -2,8 +2,21 @@
 -include_lib("eunit/include/eunit.hrl").
 -import(common_mocks, [startMockStore/0, startMockStore/2]).
 
+startMockStream(_, InitialEvents, _) ->
+  spawn(fun MockStream() ->
+    receive
+      {Sender, getEvents} ->
+        Sender ! InitialEvents,
+        MockStream();
+      {Sender, getVersion} ->
+        Sender ! 0,
+        MockStream();
+      _ -> MockStream()
+    end
+  end).
+
 streamRegistry_getStreams_should_return_initial_empty_test() ->
- R = stream_registry:startStreamRegistry(startMockStore()),
+ R = stream_registry:startStreamRegistry(startMockStore(), fun startMockStream/3),
  R ! {self(), getStreams},
  receive
    Streams ->
@@ -11,7 +24,7 @@ streamRegistry_getStreams_should_return_initial_empty_test() ->
  end.
 
 streamRegistry_getStream_should_start_new_stream_test() ->
-  R = stream_registry:startStreamRegistry(startMockStore()),
+  R = stream_registry:startStreamRegistry(startMockStore(), fun startMockStream/3),
   R ! {self(), getStream, "test"},
   receive
     {ok, Stream} ->
@@ -19,7 +32,7 @@ streamRegistry_getStream_should_start_new_stream_test() ->
   end.
 
 streamRegistry_getStream_should_load_from_store_test() ->
-  R = stream_registry:startStreamRegistry(startMockStore(ok, [1])),
+  R = stream_registry:startStreamRegistry(startMockStore(ok, [1]), fun startMockStream/3),
   R ! {self(), getStream, "test"},
   S = receive
     {ok, Stream} -> Stream
@@ -31,7 +44,7 @@ streamRegistry_getStream_should_load_from_store_test() ->
   end.
 
 streamRegistry_getStreams_should_return_newly_started_stream_empty_test() ->
-  R = stream_registry:startStreamRegistry(startMockStore()),
+  R = stream_registry:startStreamRegistry(startMockStore(), fun startMockStream/3),
   R ! {self(), getStream, "test"},
   S = receive
     {ok, Stream} -> Stream
@@ -43,7 +56,7 @@ streamRegistry_getStreams_should_return_newly_started_stream_empty_test() ->
   end.
 
 streamRegistry_getStream_should_start_a_valid_stream_test() ->
-  R = stream_registry:startStreamRegistry(startMockStore()),
+  R = stream_registry:startStreamRegistry(startMockStore(), fun startMockStream/3),
   R ! {self(), getStream, "test"},
   S = receive
     {ok, Stream} -> Stream
@@ -55,7 +68,7 @@ streamRegistry_getStream_should_start_a_valid_stream_test() ->
   end.
 
 streamRegistry_getStream_should_return_existing_stream_test() ->
-  R = stream_registry:startStreamRegistry(startMockStore()),
+  R = stream_registry:startStreamRegistry(startMockStore(), fun startMockStream/3),
   R ! {self(), getStream, "test"},
   S1 = receive
     {ok, Stream1} -> Stream1

@@ -3,7 +3,7 @@
 
 bootstrap() ->
   Store = store:startStore(),
-  _ = stream_registry:startStreamRegistry(Store),
+  _ = stream_registry:startStreamRegistry(Store, fun stream:startStream/3),
   receive
   after
     10 -> ok

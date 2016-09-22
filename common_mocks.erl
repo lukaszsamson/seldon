@@ -1,5 +1,5 @@
 -module(common_mocks).
--export([startMockStore/0, startMockStore/2]).
+-compile(export_all).
 
 startMockStore() ->
   startMockStore(ok, []).
@@ -15,4 +15,3 @@ startMockStore(Result, InitialEvents) ->
         MockStore()
     end
   end).
-  
