@@ -44,4 +44,5 @@ stream(Id, Events, Store, Observers) ->
           From ! concurrencyError,
           stream(Id, Events, Store, Observers)
       end
+  after 500 -> ok
   end.

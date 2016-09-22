@@ -82,3 +82,17 @@ streamRegistry_getStream_should_return_existing_stream_test() ->
     {ok, Stream2} -> Stream2
   end,
   ?assert(S1 =:= S2).
+
+streamRegistry_getStreams_should_not_return_stopped_stream_test() ->
+  R = startStreamRegistry(startMockStore(), fun startMockStream/3),
+  R ! {self(), getStream, "test"},
+  S = receive
+    {ok, Stream} -> Stream
+  end,
+  exit(S, error),
+  receive after 1 -> ok end,
+  R ! {self(), getStreams},
+  receive
+    Streams ->
+      ?assertEqual(#{}, Streams)
+  end.

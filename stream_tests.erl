@@ -3,7 +3,14 @@
 -import(common_mocks, [startMockStore/0, startMockStore/2]).
 
 startStream(Id, InitialEvents, Store) ->
-  spawn_link(fun () -> stream:stream(Id, InitialEvents, Store) end).
+  {P, _} = spawn_monitor(fun () -> stream:stream(Id, InitialEvents, Store) end),
+  P.
+
+stream_should_stop_if_no_messages_test() ->
+  startStream("id1", [], startMockStore()),
+  receive
+    {'DOWN', _, process, _, normal} -> ok
+  end.
 
 getEvents_returns_initial(InitialEvents) ->
   S = startStream("id1", InitialEvents, startMockStore()),

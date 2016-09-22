@@ -12,7 +12,7 @@ streamRegistry(Streams, Store, StartStream) ->
         error ->
           case load(Store, StreamId) of
             {ok, Events} ->
-              NewStream = spawn_link(fun () ->
+              {NewStream, _} = spawn_monitor(fun () ->
                 StartStream(StreamId, Events, Store)
               end),
               {{ok, NewStream}, Streams#{StreamId => NewStream}};
@@ -24,7 +24,10 @@ streamRegistry(Streams, Store, StartStream) ->
       streamRegistry(NewStreams, Store, StartStream);
     {From, getStreams} when is_pid(From) ->
       From ! Streams,
-      streamRegistry(Streams, Store, StartStream)
+      streamRegistry(Streams, Store, StartStream);
+    {'DOWN', _, process, Pid, _} ->
+      Ks = [K || {K, V} <- maps:to_list(Streams), V =:= Pid],
+      streamRegistry(maps:without(Ks, Streams), Store, StartStream)
   end.
 
 load(Store, StreamId) ->
