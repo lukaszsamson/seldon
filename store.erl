@@ -1,5 +1,5 @@
 -module(store).
--export([startStore/1]).
+-export([startStore/0, startStore/1]).
 
 store(StreamsEvents) ->
   receive
@@ -15,6 +15,9 @@ store(StreamsEvents) ->
       From ! Events,
       store(StreamsEvents)
   end.
+
+startStore() ->
+  startStore(#{}).
 
 startStore(StreamsEvents) ->
   io:format("Starting store~n", []),
