@@ -12,6 +12,7 @@ stream(Id, Events, Store) ->
 stream(Id, Events, Store, Observers) ->
   Version = getVersion(Events),
   receive
+    stop -> ok;
     {From, observe} when is_pid(From) ->
       stream(Id, Events, Store, Observers ++ [From]);
     {From, unobserve} when is_pid(From) ->

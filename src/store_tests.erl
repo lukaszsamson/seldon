@@ -2,40 +2,49 @@
 -include_lib("eunit/include/eunit.hrl").
 
 spawnStore(InitialData) ->
-  spawn_link(fun () -> store:store(InitialData) end).
+  spawn(fun () -> store:store(InitialData) end).
 
-store_should_return_empty_list_for_new_streamId_test() ->
-  S = spawnStore(#{}),
-  S ! {self(), load, "stream1"},
-  receive
-    Events -> ?assertEqual([], Events)
-  end.
+stopStore(_, Store) ->
+  Store ! stop.
 
-store_should_return_events_list_for_known_streamId_test() ->
-  S = spawnStore(#{"stream1" => [1]}),
-  S ! {self(), load, "stream1"},
-  receive
-    Events -> ?assertEqual([1], Events)
-  end.
-
-store_should_store_events_list_for_new_streamId_test() ->
-  S = spawnStore(#{}),
-  S ! {self(), save, "stream1", [1]},
-  receive
-    ok -> ok
+store_load_should_return_events_for_streamId_test_() ->
+  Test = fun (ExpectedEvents) ->
+    fun (_, Store) ->
+      Store ! {self(), load, "stream1"},
+      receive
+        Events -> ?_assertEqual(ExpectedEvents, Events)
+      end
+    end
   end,
-  S ! {self(), load, "stream1"},
-  receive
-    Events -> ?assertEqual([1], Events)
-  end.
+  {
+    foreachx,
+    fun spawnStore/1,
+    fun stopStore/2,
+    [{InitialData, Test(ExpectedEvents)} || {InitialData, ExpectedEvents} <- [
+      {#{}, []},
+      {#{"stream1" => [1]}, [1]}
+    ]]
+  }.
 
-store_should_store_events_list_for_known_streamId_test() ->
-  S = spawnStore(#{"stream1" => [1]}),
-  S ! {self(), save, "stream1", [1, 2]},
-  receive
-    ok -> ok
+store_save_should_persist_events_for_streamId_test_() ->
+  Test = fun (ExpectedEvents) ->
+    fun (_, Store) ->
+      Store ! {self(), save, "stream1", [1, 2]},
+      receive
+        ok -> ok
+      end,
+      Store ! {self(), load, "stream1"},
+      receive
+        Events -> ?_assertEqual(ExpectedEvents, Events)
+      end
+    end
   end,
-  S ! {self(), load, "stream1"},
-  receive
-    Events -> ?assertEqual([1, 2], Events)
-  end.
+  {
+    foreachx,
+    fun spawnStore/1,
+    fun stopStore/2,
+    [{InitialData, Test(ExpectedEvents)} || {InitialData, ExpectedEvents} <- [
+      {#{}, [1, 2]},
+      {#{"stream1" => [1]}, [1, 2]}
+    ]]
+  }.

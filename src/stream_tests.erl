@@ -5,39 +5,64 @@
 startStream(Id, InitialEvents, Store) ->
   spawn(fun () -> stream:stream(Id, InitialEvents, Store) end).
 
-stream_should_stop_if_no_messages_test() ->
-  spawn_monitor(fun () -> stream:stream("id1", [], startMockStore()) end),
-  receive
-    {'DOWN', _, process, _, normal} -> ok
-  end.
+stream_should_stop_if_no_messages_test_() -> {
+    setup,
+    fun () ->
+      MockStore = common_mocks:startMockStore(),
+      {Stream, Ref} = spawn_monitor(fun () -> stream:stream("id", [], MockStore) end),
+      {MockStore, Stream, Ref}
+    end,
+    fun ({MockStore, Stream, Ref}) ->
+      erlang:demonitor(Ref, [flush]),
+      Stream ! stop,
+      common_mocks:stopMockStore(MockStore)
+    end,
+    fun ({_, _, _}) ->
+      R = receive
+        {'DOWN', _, process, _, normal} -> ok
+      end,
+      [?_assertEqual(ok, R)]
+    end
+  }.
 
-getEvents_returns_initial(InitialEvents) ->
-  S = startStream("id1", InitialEvents, startMockStore()),
-  S ! {self(), getEvents},
-  receive
-    Events ->
-      ?assertEqual(InitialEvents, Events)
-  end.
+startStreamAndStore() ->
+  startStreamAndStore([]).
 
-getEvents_returns_initial_empty_test() ->
-  getEvents_returns_initial([]).
+startStreamAndStore(InitialEvents) ->
+  MockStore = common_mocks:startMockStore(),
+  Stream = startStream("id1", InitialEvents, MockStore),
+  {MockStore, Stream}.
 
-getEvents_returns_initial_nonempty_test() ->
-  getEvents_returns_initial([2, 3, 5]).
+stopStreamAndStore({MockStore, Stream}) ->
+  Stream ! stop,
+  common_mocks:stopMockStore(MockStore).
 
-getVersion_returns_initial(InitialEvents, ExpectedResult) ->
-  S = startStream("id1", InitialEvents, startMockStore()),
-  S ! {self(), getVersion},
-  receive
-    Version ->
-      ?assertEqual(ExpectedResult, Version)
-  end.
+stopStreamAndStore(_, {MockStore, Stream}) ->
+  stopStreamAndStore({MockStore, Stream}).
 
-getVersion_returns_initial_empty_test() ->
-  getVersion_returns_initial([], 0).
-
-getVersion_returns_initial_nonempty_test() ->
-  getVersion_returns_initial([2, 3, 5], 3).
+stream_init_test_() ->
+  Test = fun (InitialVersion) ->
+    fun (InitialEvents, {_, Stream}) -> [
+      {"check events", begin
+        Stream ! {self(), getEvents},
+        receive
+          Events -> [?_assertEqual(InitialEvents, Events)]
+        end
+      end},
+      {"check version", begin
+        Stream ! {self(), getVersion},
+        receive
+          Version -> [?_assertEqual(InitialVersion, Version)]
+        end
+      end}]
+    end
+  end,
+  {
+    foreachx,
+    fun startStreamAndStore/1,
+    fun stopStreamAndStore/2,
+    [{X, Test(V)} || {X, V} <- [{[], 0}, {[1, 2, 3], 3}]]
+  }.
 
 appendEvents_should_return_error_if_not_stored_test() ->
   S = startStream("id1", [], startMockStore(error, [])),
@@ -46,168 +71,126 @@ appendEvents_should_return_error_if_not_stored_test() ->
     Response -> ?assertEqual(error, Response)
   end.
 
-appendEventsCheckCommon(InitialEvents, NewEvents, MaxVersion) ->
-  S = startStream("id1", InitialEvents, startMockStore()),
-  S ! {self(), appendEvents, NewEvents, MaxVersion},
-  receive
-    _ -> ok
-  end,
-  S.
-
-appendEventsCheckEvents(InitialEvents, NewEvents, ExpectedEvents, MaxVersion) ->
-  S = appendEventsCheckCommon(InitialEvents, NewEvents, MaxVersion),
-  S ! {self(), getEvents},
-  receive
-    Events ->
-      ?assertEqual(ExpectedEvents, Events)
-  end.
-
-appendEvents_empty_should_append_test() ->
-  appendEventsCheckEvents([], [5], [5], -1).
-
-appendEvents_nonempty_should_append_test() ->
-  appendEventsCheckEvents([2, 3], [5], [2, 3, 5], -1).
-
-appendEvents_nonempty_should_not_append_if_wrong_version_test() ->
-  appendEventsCheckEvents([2, 3], [5], [2, 3], 1).
-
-appendEventsCheckVersion(InitialEvents, NewEvents, ExpectedVersion, MaxVersion) ->
-  S = appendEventsCheckCommon(InitialEvents, NewEvents, MaxVersion),
-  S ! {self(), getVersion},
-  receive
-    Version ->
-      ?assertEqual(ExpectedVersion, Version)
-  end.
-
-appendEvents_empty_should_increase_version_test() ->
-  appendEventsCheckVersion([], [5], 1, -1).
-
-appendEvents_nonempty_increase_version_test() ->
-  appendEventsCheckVersion([2, 3], [5], 3, -1).
-
-appendEvents_nonempty_should_not_increase_version_if_wrong_version_test() ->
-  appendEventsCheckVersion([2, 3], [5], 2, 1).
-
-appendEventsVersionCheck(InitialEvents, NewEvents, MaxVersion, ExpectedResult) ->
-  S = startStream("id1", InitialEvents, startMockStore()),
-  S ! {self(), appendEvents, NewEvents, MaxVersion},
-  receive
-    Result -> ?assertEqual(ExpectedResult, Result)
-  end.
-
-appendEvents_empty_anyVersion_test() ->
-  appendEventsVersionCheck([], [5], -1, ack).
-
-appendEvents_empty_exactVersion_test() ->
-  appendEventsVersionCheck([], [5], 0, ack).
-
-appendEvents_empty_greaterVersion_test() ->
-  appendEventsVersionCheck([], [5], 1, ack).
-
-appendEvents_nonempty_anyVersion_test() ->
-  appendEventsVersionCheck([2, 3], [5], -1, ack).
-
-appendEvents_nonempty_exactVersion_test() ->
-  appendEventsVersionCheck([2, 3], [5], 2, ack).
-
-appendEvents_nonempty_greaterVersion_test() ->
-  appendEventsVersionCheck([2, 3], [5], 3, ack).
-
-appendEvents_nonempty_lowerVersion_test() ->
-  appendEventsVersionCheck([2, 3], [5], 1, concurrencyError).
-
-observer_should_get_updates_test() ->
-  S = startStream("id1", [], startMockStore()),
-  S ! {self(), observe},
-  S ! {self(), appendEvents, [1], 0},
-  receive
-    _ -> ok
-  end,
-  receive
-    Events -> ?assertEqual([1], Events)
-  end.
-
-observer_should_get_updates_multiple_test() ->
-  S = startStream("id1", [], startMockStore()),
-  S ! {self(), observe},
-  S ! {self(), appendEvents, [1], 0},
-  receive
-    _ -> ok
-  end,
-  receive
-    Events -> ?assertEqual([1], Events)
-  end,
-  S ! {self(), appendEvents, [2, 3], 1},
-  receive
-    _ -> ok
-  end,
-  receive
-    Events1 -> ?assertEqual([2, 3], Events1)
-  end.
-
-unobserve_should_end_subscription_test() ->
-  S = startStream("id1", [], startMockStore()),
-  S ! {self(), observe},
-  S ! {self(), unobserve},
-  S ! {self(), appendEvents, [1], 0},
-  receive
-    _ -> ok
-  end,
-  receive
-    _ -> ?assert(false)
-  after
-    1 -> ok
-  end.
-
-observer_should_get_updates_multiple_queued_test() ->
-  S = startStream("id1", [], startMockStore()),
-  Self = self(),
-  O = spawn(fun () ->
-    receive
-    after
-      10 -> ok
-    end,
-    receive
-      Events -> ?assertEqual([1], Events)
-    end,
-    receive
-      Events1 -> ?assertEqual([2, 3], Events1)
-    end,
-    Self ! ok
-  end),
-  S ! {O, observe},
-
-  S ! {self(), appendEvents, [1], 0},
-  receive
-    _ -> ok
-  end,
-  S ! {self(), appendEvents, [2, 3], 1},
-  receive
-    ack -> ok
-  end,
-  receive
-    ok -> ok
-  end.
-
-observer_should_not_kill_stream_test() ->
-  S = startStream("id1", [], startMockStore()),
-  O = spawn(fun () ->
-    receive
-      Events -> ?assertEqual([1], Events)
+appendEvents_test_() ->
+  Test = fun (Appended, MaxVersion, Expected, ExpectedVersion, ExpectedResult) ->
+    fun (_, {_, Stream}) ->
+      Stream ! {self(), appendEvents, Appended, MaxVersion},
+      Result = receive
+        R -> R
+      end,
+      [
+      {"check result", ?_assertEqual(ExpectedResult, Result)},
+      {"check events", begin
+        Stream ! {self(), getEvents},
+        receive
+          Events -> ?_assertEqual(Expected, Events)
+        end
+      end},
+      {"check version", begin
+        Stream ! {self(), getVersion},
+        receive
+          Version -> ?_assertEqual(ExpectedVersion , Version)
+        end
+      end}]
     end
-  end),
-  S ! {O, observe},
+  end,
+  {
+    foreachx,
+    fun startStreamAndStore/1,
+    fun stopStreamAndStore/2,
+    [{Initial, Test(Appended, MaxVersion, Expected, ExpectedVersion, ExpectedResult)} || {Initial, Appended, MaxVersion, Expected, ExpectedVersion, ExpectedResult} <- [
+      {[], [5], -1, [5], 1, ack},
+      {[], [5], 0, [5], 1, ack},
+      {[2, 3], [5], -1, [2, 3, 5], 3, ack},
+      {[2, 3], [5], 3, [2, 3, 5], 3, ack},
+      {[2, 3], [5], 1, [2, 3], 2, concurrencyError}
+      ]
+    ]
+  }.
 
-  S ! {self(), appendEvents, [1], 0},
-  receive
-    _ -> ok
-  end,
-  S ! {self(), appendEvents, [2, 3], 1},
-  receive
-    ack -> ok
-  end,
-  S ! {self(), getVersion},
-  receive
-    Version ->
-      ?assertEqual(3, Version)
-  end.
+observer_should_get_updates_test_() -> {
+    setup,
+    fun startStreamAndStore/0,
+    fun stopStreamAndStore/1,
+    fun ({_, Stream}) ->
+      Stream ! {self(), observe},
+      Go = fun (EventsToAppend) ->
+        Stream ! {self(), appendEvents, EventsToAppend, -1},
+        receive
+          ack -> ok
+        end,
+        receive
+          Events -> ?_assertEqual(EventsToAppend, Events)
+        end
+      end,
+      [
+      {"single", Go([1])},
+      {"multiple", Go([1, 2])}
+      ]
+    end
+  }.
+
+observer_should_not_get_updates_on_error_test_() -> {
+    setup,
+    fun () -> startStreamAndStore([1]) end,
+    fun stopStreamAndStore/1,
+    fun ({_, Stream}) ->
+      Stream ! {self(), observe},
+      Stream ! {self(), appendEvents, [1], 0},
+      receive
+        concurrencyError -> ok
+      end,
+      R = receive
+        _ -> true
+      after
+        10 -> false
+      end,
+      [?_assertEqual(false, R)]
+    end
+  }.
+
+unobserve_should_end_subscription_test_() -> {
+    setup,
+    fun startStreamAndStore/0,
+    fun stopStreamAndStore/1,
+    fun ({_, Stream}) ->
+      Stream ! {self(), observe},
+      Stream ! {self(), unobserve},
+      Stream ! {self(), appendEvents, [1], -1},
+      receive
+        ack -> ok
+      end,
+      R = receive
+        _ -> true
+      after
+        10 -> false
+      end,
+      [?_assertEqual(false, R)]
+    end
+  }.
+
+not_listening_observer_should_not_block_stream_test_() -> {
+    setup,
+    fun () ->
+      MockStore = common_mocks:startMockStore(),
+      Stream = spawn(fun () -> stream:stream("id", [], MockStore) end),
+      Observer = spawn(fun () ->
+        receive
+          stop -> ok
+        end
+      end),
+      {MockStore, Stream, Observer}
+    end,
+    fun ({MockStore, Stream, Observer}) ->
+      Observer ! stop,
+      Stream ! stop,
+      common_mocks:stopMockStore(MockStore)
+    end,
+    fun ({_, Stream, _}) ->
+      Stream ! {self(), appendEvents, [1], 0},
+      R = receive
+        ack -> ack
+      end,
+      [?_assertEqual(ack, R)]
+    end
+  }.

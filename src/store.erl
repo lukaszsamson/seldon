@@ -6,6 +6,7 @@ store() ->
 
 store(StreamsEvents) ->
   receive
+    stop -> ok;
     {From, save, StreamId, Events} when is_pid(From); is_list(StreamId); is_list(Events) ->
       % TODO validate StreamId with io_lib:printable_unicode_list(Term) -> boolean()
       From ! ok,

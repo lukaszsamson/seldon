@@ -6,6 +6,9 @@ streamRegistry(Store, StartStream) ->
 
 streamRegistry(Streams, Store, StartStream) ->
   receive
+    stop ->
+      lists:foreach(fun (O) -> O ! stop end, maps:values(Streams)),
+      ok;
     {From, getStream, StreamId} when is_pid(From); is_list(StreamId) ->
       {Response, NewStreams} = case (maps:find(StreamId, Streams)) of
         {ok, Value} -> {{ok, Value}, Streams};

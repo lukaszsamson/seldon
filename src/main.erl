@@ -1,10 +1,11 @@
 -module(main).
--export([bootstrap/0]).
+-export([bootstrap/0, shutdown/1]).
 
 bootstrap() ->
   Store = spawn_link(fun () -> store:store() end),
-  _ = spawn_link(fun () -> stream_registry:streamRegistry(Store, fun stream:stream/3) end),
-  receive
-  after
-    10 -> ok
-  end.
+  Registry = spawn_link(fun () -> stream_registry:streamRegistry(Store, fun stream:stream/3) end),
+  {Store, Registry}.
+
+shutdown({Store, Registry}) ->
+  Registry ! stop,
+  Store ! stop.
