@@ -24,7 +24,7 @@ streamRegistry_getStreams_should_return_initial_empty_test() ->
  R ! {self(), getStreams},
  receive
    Streams ->
-     ?assert(Streams =:= #{})
+     ?assertEqual(#{}, Streams)
  end.
 
 streamRegistry_getStream_should_start_new_stream_test() ->
@@ -44,7 +44,7 @@ streamRegistry_getStream_should_load_from_store_test() ->
   S ! {self(), getEvents},
   receive
     Events ->
-      ?assert(Events =:= [1])
+      ?assertEqual([1], Events)
   end.
 
 streamRegistry_getStreams_should_return_newly_started_stream_empty_test() ->
@@ -56,7 +56,7 @@ streamRegistry_getStreams_should_return_newly_started_stream_empty_test() ->
   R ! {self(), getStreams},
   receive
     Streams ->
-      ?assert(#{"test" => S} =:= Streams)
+      ?assertEqual(#{"test" => S}, Streams)
   end.
 
 streamRegistry_getStream_should_start_a_valid_stream_test() ->
@@ -68,7 +68,7 @@ streamRegistry_getStream_should_start_a_valid_stream_test() ->
   S ! {self(), getVersion},
   receive
     Version ->
-      ?assert(Version =:= 0)
+      ?assertEqual(0, Version)
   end.
 
 streamRegistry_getStream_should_return_existing_stream_test() ->
@@ -81,7 +81,7 @@ streamRegistry_getStream_should_return_existing_stream_test() ->
   S2 = receive
     {ok, Stream2} -> Stream2
   end,
-  ?assert(S1 =:= S2).
+  ?assertEqual(S1, S2).
 
 streamRegistry_getStreams_should_not_return_stopped_stream_test() ->
   R = startStreamRegistry(startMockStore(), fun startMockStream/3),

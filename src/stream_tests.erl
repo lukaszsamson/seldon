@@ -17,7 +17,7 @@ getEvents_returns_initial(InitialEvents) ->
   S ! {self(), getEvents},
   receive
     Events ->
-      ?assert(Events =:= InitialEvents)
+      ?assertEqual(InitialEvents, Events)
   end.
 
 getEvents_returns_initial_empty_test() ->
@@ -31,7 +31,7 @@ getVersion_returns_initial(InitialEvents, ExpectedResult) ->
   S ! {self(), getVersion},
   receive
     Version ->
-      ?assert(Version =:= ExpectedResult)
+      ?assertEqual(ExpectedResult, Version)
   end.
 
 getVersion_returns_initial_empty_test() ->
@@ -44,7 +44,7 @@ appendEvents_should_return_error_if_not_stored_test() ->
   S = startStream("id1", [], startMockStore(error, [])),
   S ! {self(), appendEvents, [1], 0},
   receive
-    Response -> ?assert(Response =:= error)
+    Response -> ?assertEqual(error, Response)
   end.
 
 appendEventsCheckCommon(InitialEvents, NewEvents, MaxVersion) ->
@@ -60,7 +60,7 @@ appendEventsCheckEvents(InitialEvents, NewEvents, ExpectedEvents, MaxVersion) ->
   S ! {self(), getEvents},
   receive
     Events ->
-      ?assert(Events =:= ExpectedEvents)
+      ?assertEqual(ExpectedEvents, Events)
   end.
 
 appendEvents_empty_should_append_test() ->
@@ -77,7 +77,7 @@ appendEventsCheckVersion(InitialEvents, NewEvents, ExpectedVersion, MaxVersion) 
   S ! {self(), getVersion},
   receive
     Version ->
-      ?assert(Version =:= ExpectedVersion)
+      ?assertEqual(ExpectedVersion, Version)
   end.
 
 appendEvents_empty_should_increase_version_test() ->
@@ -93,7 +93,7 @@ appendEventsVersionCheck(InitialEvents, NewEvents, MaxVersion, ExpectedResult) -
   S = startStream("id1", InitialEvents, startMockStore()),
   S ! {self(), appendEvents, NewEvents, MaxVersion},
   receive
-    Result -> ?assert(Result =:= ExpectedResult)
+    Result -> ?assertEqual(ExpectedResult, Result)
   end.
 
 appendEvents_empty_anyVersion_test() ->
@@ -125,7 +125,7 @@ observer_should_get_updates_test() ->
     _ -> ok
   end,
   receive
-    Events -> ?assert(Events =:= [1])
+    Events -> ?assertEqual([1], Events)
   end.
 
 observer_should_get_updates_multiple_test() ->
@@ -136,14 +136,14 @@ observer_should_get_updates_multiple_test() ->
     _ -> ok
   end,
   receive
-    Events -> ?assert(Events =:= [1])
+    Events -> ?assertEqual([1], Events)
   end,
   S ! {self(), appendEvents, [2, 3], 1},
   receive
     _ -> ok
   end,
   receive
-    Events1 -> ?assert(Events1 =:= [2, 3])
+    Events1 -> ?assertEqual([2, 3], Events1)
   end.
 
 unobserve_should_end_subscription_test() ->
@@ -169,10 +169,10 @@ observer_should_get_updates_multiple_queued_test() ->
       10 -> ok
     end,
     receive
-      Events -> ?assert(Events =:= [1])
+      Events -> ?assertEqual([1], Events)
     end,
     receive
-      Events1 -> ?assert(Events1 =:= [2, 3])
+      Events1 -> ?assertEqual([2, 3], Events1)
     end,
     Self ! ok
   end),
@@ -194,7 +194,7 @@ observer_should_not_kill_stream_test() ->
   S = startStream("id1", [], startMockStore()),
   O = spawn(fun () ->
     receive
-      Events -> ?assert(Events =:= [1])
+      Events -> ?assertEqual([1], Events)
     end
   end),
   S ! {O, observe},
@@ -210,5 +210,5 @@ observer_should_not_kill_stream_test() ->
   S ! {self(), getVersion},
   receive
     Version ->
-      ?assert(Version =:= 3)
+      ?assertEqual(3, Version)
   end.
