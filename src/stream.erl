@@ -37,6 +37,7 @@ stream(Id, Events, Store, Observers) ->
               From ! Error,
               stream(Id, Events, Store, Observers)
           after
+            % TODO config
             100 ->
               From ! timeout,
               stream(Id, Events, Store, Observers)
@@ -45,5 +46,7 @@ stream(Id, Events, Store, Observers) ->
           From ! concurrencyError,
           stream(Id, Events, Store, Observers)
       end
-  after 500 -> ok
+  after
+    % TODO config
+    500 -> ok
   end.

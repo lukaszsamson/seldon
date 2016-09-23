@@ -77,6 +77,27 @@ streamRegistry_stop_should_stop_streams_test_() ->{
     end
   }.
 
+% TODO
+% streamRegistry_kill_should_stop_streams_test_() ->{
+%     setup,
+%     fun startAll/0,
+%     fun stopAll/1,
+%     fun ({_, Registry}) -> [
+%       begin
+%        Registry ! {self(), getStream, "test"},
+%        S = receive
+%          {ok, Stream} -> Stream
+%        end,
+%        erlang:monitor(process, S),
+%        exit(Registry, kill),
+%        R = receive
+%          {'DOWN', _, process, _, _} -> ok
+%        end,
+%        ?_assertEqual(ok, R)
+%       end]
+%     end
+%   }.
+
 streamRegistry_getStream_should_load_from_store_test_() -> {
     setup,
     fun () ->

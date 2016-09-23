@@ -33,6 +33,11 @@ startStreamAndStore(InitialEvents) ->
   Stream = startStream("id1", InitialEvents, MockStore),
   {MockStore, Stream}.
 
+startStreamAndStoreError() ->
+  MockStore = common_mocks:startMockStore(error, []),
+  Stream = startStream("id1", [], MockStore),
+  {MockStore, Stream}.
+
 stopStreamAndStore({MockStore, Stream}) ->
   Stream ! stop,
   common_mocks:stopMockStore(MockStore).
@@ -64,12 +69,18 @@ stream_init_test_() ->
     [{X, Test(V)} || {X, V} <- [{[], 0}, {[1, 2, 3], 3}]]
   }.
 
-appendEvents_should_return_error_if_not_stored_test() ->
-  S = startStream("id1", [], startMockStore(error, [])),
-  S ! {self(), appendEvents, [1], 0},
-  receive
-    Response -> ?assertEqual(error, Response)
-  end.
+appendEvents_should_return_error_if_not_stored_test_() -> {
+    setup,
+    fun startStreamAndStoreError/0,
+    fun stopStreamAndStore/1,
+    fun ({_, Stream}) ->
+      % Stream ! {self(), observe},
+      Stream ! {self(), appendEvents, [1], 0},
+      receive
+        Response -> ?_assertEqual(error, Response)
+      end
+    end
+  }.
 
 appendEvents_test_() ->
   Test = fun (Appended, MaxVersion, Expected, ExpectedVersion, ExpectedResult) ->
@@ -145,7 +156,26 @@ observer_should_not_get_updates_on_error_test_() -> {
       after
         10 -> false
       end,
-      [?_assertEqual(false, R)]
+      ?_assertEqual(false, R)
+    end
+  }.
+
+observer_should_not_get_updates_on__store_error_test_() -> {
+    setup,
+    fun startStreamAndStoreError/0,
+    fun stopStreamAndStore/1,
+    fun ({_, Stream}) ->
+      Stream ! {self(), observe},
+      Stream ! {self(), appendEvents, [1], 0},
+      receive
+        error -> ok
+      end,
+      R = receive
+        _ -> true
+      after
+        10 -> false
+      end,
+      ?_assertEqual(false, R)
     end
   }.
 

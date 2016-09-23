@@ -7,9 +7,11 @@ streamRegistry(Store, StartStream) ->
 streamRegistry(Streams, Store, StartStream) ->
   receive
     stop ->
+      % TODO link
       lists:foreach(fun (O) -> O ! stop end, maps:values(Streams)),
       ok;
     {From, getStream, StreamId} when is_pid(From); is_list(StreamId) ->
+      % TODO validate StreamId with io_lib:printable_unicode_list(Term) -> boolean()
       {Response, NewStreams} = case (maps:find(StreamId, Streams)) of
         {ok, Value} -> {{ok, Value}, Streams};
         error ->
@@ -38,5 +40,6 @@ load(Store, StreamId) ->
   receive
     Events when is_list(Events) -> {ok, Events}
   after
+    % TODO config
     1000 -> timeout
   end.
