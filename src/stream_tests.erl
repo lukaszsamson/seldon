@@ -1,13 +1,12 @@
 -module(stream_tests).
 -include_lib("eunit/include/eunit.hrl").
--import(common_mocks, [startMockStore/0, startMockStore/2]).
+-import(common_mocks, [startMockStore/0, startMockStore/2, stopMockStore/1]).
 
 startStream(Id, InitialEvents, Store) ->
-  {P, _} = spawn_monitor(fun () -> stream:stream(Id, InitialEvents, Store) end),
-  P.
+  spawn(fun () -> stream:stream(Id, InitialEvents, Store) end).
 
 stream_should_stop_if_no_messages_test() ->
-  startStream("id1", [], startMockStore()),
+  spawn_monitor(fun () -> stream:stream("id1", [], startMockStore()) end),
   receive
     {'DOWN', _, process, _, normal} -> ok
   end.

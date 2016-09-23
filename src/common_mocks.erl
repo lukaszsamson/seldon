@@ -12,6 +12,10 @@ startMockStore(Result, InitialEvents) ->
         MockStore();
       {Sender, load, _} ->
         Sender ! InitialEvents,
-        MockStore()
+        MockStore();
+      stop -> ok
     end
   end).
+
+stopMockStore(Pid) ->
+  Pid ! stop.

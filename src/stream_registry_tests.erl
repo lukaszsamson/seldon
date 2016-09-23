@@ -1,6 +1,6 @@
 -module(stream_registry_tests).
 -include_lib("eunit/include/eunit.hrl").
--import(common_mocks, [startMockStore/0, startMockStore/2]).
+-import(common_mocks, [startMockStore/0, startMockStore/2, stopMockStore/1]).
 
 startMockStream(_, InitialEvents, _) ->
   MockStream = fun MockStream() ->
