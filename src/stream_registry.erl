@@ -1,9 +1,12 @@
 -module(stream_registry).
+-include("common.hrl").
 -export([streamRegistry/2]).
 
+-spec streamRegistry(store(), stream_ctor()) -> no_return().
 streamRegistry(Store, StartStream) ->
   streamRegistry(#{}, Store, StartStream).
 
+-spec streamRegistry(#{stream_id() => list(event())}, store(), stream_ctor()) -> no_return().
 streamRegistry(Streams, Store, StartStream) ->
   receive
     stop ->
@@ -35,6 +38,7 @@ streamRegistry(Streams, Store, StartStream) ->
       streamRegistry(maps:without(Ks, Streams), Store, StartStream)
   end.
 
+-spec load(store(), stream_id()) -> {ok, list(event())} | timeout.
 load(Store, StreamId) ->
   Store ! {self(), load, StreamId},
   receive

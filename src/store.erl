@@ -1,9 +1,12 @@
 -module(store).
+-include("common.hrl").
 -export([store/0, store/1]).
 
+-spec store() -> no_return().
 store() ->
   store(#{}).
 
+-spec store(#{stream_id() => list(event)}) -> no_return().
 store(StreamsEvents) ->
   receive
     stop -> ok;

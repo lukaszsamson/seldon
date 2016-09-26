@@ -1,14 +1,19 @@
 -module(stream).
+-include("common.hrl").
 -export([stream/3]).
 
+-spec isVersionOk(non_neg_integer(), integer()) -> boolean().
 isVersionOk(Version, MaxVersion) ->
   MaxVersion < 0 orelse Version =< MaxVersion.
 
+-spec getVersion(list(event())) -> integer().
 getVersion(Events) -> length(Events).
 
+-spec stream(stream_id(), list(event()), store()) -> no_return().
 stream(Id, Events, Store) ->
   stream(Id, Events, Store, []).
 
+-spec stream(stream_id(), list(event()), store(), list(observer())) -> no_return().
 stream(Id, Events, Store, Observers) ->
   Version = getVersion(Events),
   receive
