@@ -1,6 +1,18 @@
 -module(stream).
 -include("common.hrl").
--export([stream/3]).
+-export([start/3, start_link/3, init/3]).
+
+-spec start(stream_id(), list(event()), store()) -> pid().
+start(Id, Events, Store) ->
+  spawn(?MODULE, init, [Id, Events, Store]).
+
+-spec start_link(stream_id(), list(event()), store()) -> pid().
+start_link(Id, Events, Store) ->
+  spawn_link(?MODULE, init, [Id, Events, Store]).
+
+-spec init(stream_id(), list(event()), store()) -> no_return().
+init(Id, Events, Store) ->
+  loop(Id, Events, Store).
 
 -spec isVersionOk(non_neg_integer(), integer()) -> boolean().
 isVersionOk(Version, MaxVersion) ->
@@ -9,25 +21,25 @@ isVersionOk(Version, MaxVersion) ->
 -spec getVersion(list(event())) -> integer().
 getVersion(Events) -> length(Events).
 
--spec stream(stream_id(), list(event()), store()) -> no_return().
-stream(Id, Events, Store) ->
-  stream(Id, Events, Store, []).
+-spec loop(stream_id(), list(event()), store()) -> no_return().
+loop(Id, Events, Store) ->
+  loop(Id, Events, Store, []).
 
--spec stream(stream_id(), list(event()), store(), list(observer())) -> no_return().
-stream(Id, Events, Store, Observers) ->
+-spec loop(stream_id(), list(event()), store(), list(observer())) -> no_return().
+loop(Id, Events, Store, Observers) ->
   Version = getVersion(Events),
   receive
     stop -> ok;
     {From, observe} when is_pid(From) ->
-      stream(Id, Events, Store, Observers ++ [From]);
+      loop(Id, Events, Store, Observers ++ [From]);
     {From, unobserve} when is_pid(From) ->
-      stream(Id, Events, Store, Observers -- [From]);
+      loop(Id, Events, Store, Observers -- [From]);
     {From, getEvents} when is_pid(From) ->
       From ! Events,
-      stream(Id, Events, Store, Observers);
+      loop(Id, Events, Store, Observers);
     {From, getVersion} when is_pid(From) ->
       From ! Version,
-      stream(Id, Events, Store, Observers);
+      loop(Id, Events, Store, Observers);
     {From, appendEvents, NewEvents, MaxVersion} when is_pid(From); is_list(NewEvents); is_integer(MaxVersion) ->
       case isVersionOk(Version, MaxVersion) of
         true ->
@@ -37,19 +49,19 @@ stream(Id, Events, Store, Observers) ->
             ok ->
               From ! ack,
               lists:foreach(fun (O) -> O ! NewEvents end, Observers),
-              stream(Id, UpdatedEvents, Store, Observers);
+              loop(Id, UpdatedEvents, Store, Observers);
             Error ->
               From ! Error,
-              stream(Id, Events, Store, Observers)
+              loop(Id, Events, Store, Observers)
           after
             % TODO config
             100 ->
               From ! timeout,
-              stream(Id, Events, Store, Observers)
+              loop(Id, Events, Store, Observers)
           end;
         false ->
           From ! concurrencyError,
-          stream(Id, Events, Store, Observers)
+          loop(Id, Events, Store, Observers)
       end
   after
     % TODO config

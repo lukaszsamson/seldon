@@ -1,14 +1,22 @@
 -module(stream_registry).
 -include("common.hrl").
--export([streamRegistry/2]).
+-export([start/2, start_link/2, init/2]).
 
--spec streamRegistry(store(), stream_ctor()) -> no_return().
-streamRegistry(Store, StartStream) ->
+-spec start(store(), stream_ctor()) -> pid().
+start(Store, StartStream) ->
+  spawn(?MODULE, init, [Store, StartStream]).
+
+-spec start_link(store(), stream_ctor()) -> pid().
+start_link(Store, StartStream) ->
+  spawn_link(?MODULE, init, [Store, StartStream]).
+
+-spec init(store(), stream_ctor()) -> no_return().
+init(Store, StartStream) ->
   process_flag(trap_exit, true),
-  streamRegistry(#{}, Store, StartStream).
+  loop(#{}, Store, StartStream).
 
--spec streamRegistry(#{stream_id() => list(event())}, store(), stream_ctor()) -> no_return().
-streamRegistry(Streams, Store, StartStream) ->
+-spec loop(#{stream_id() => list(event())}, store(), stream_ctor()) -> no_return().
+loop(Streams, Store, StartStream) ->
   receive
     stop ->
       % TODO link
@@ -30,13 +38,13 @@ streamRegistry(Streams, Store, StartStream) ->
           end
       end,
       From ! Response,
-      streamRegistry(NewStreams, Store, StartStream);
+      loop(NewStreams, Store, StartStream);
     {From, getStreams} when is_pid(From) ->
       From ! Streams,
-      streamRegistry(Streams, Store, StartStream);
+      loop(Streams, Store, StartStream);
     {'EXIT', Pid, _} ->
       Ks = [K || {K, V} <- maps:to_list(Streams), V =:= Pid],
-      streamRegistry(maps:without(Ks, Streams), Store, StartStream)
+      loop(maps:without(Ks, Streams), Store, StartStream)
   end.
 
 -spec load(store(), stream_id()) -> {ok, list(event())} | timeout.

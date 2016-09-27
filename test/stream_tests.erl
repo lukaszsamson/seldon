@@ -2,14 +2,11 @@
 -include_lib("eunit/include/eunit.hrl").
 -import(common_mocks, [startMockStore/0, startMockStore/2, stopMockStore/1]).
 
-startStream(Id, InitialEvents, Store) ->
-  spawn(fun () -> stream:stream(Id, InitialEvents, Store) end).
-
 stream_should_stop_if_no_messages_test_() -> {
     setup,
     fun () ->
       MockStore = common_mocks:startMockStore(),
-      {Stream, Ref} = spawn_monitor(fun () -> stream:stream("id", [], MockStore) end),
+      {Stream, Ref} = spawn_monitor(fun () -> stream:init("id", [], MockStore) end),
       {MockStore, Stream, Ref}
     end,
     fun ({MockStore, Stream, Ref}) ->
@@ -30,12 +27,12 @@ startStreamAndStore() ->
 
 startStreamAndStore(InitialEvents) ->
   MockStore = common_mocks:startMockStore(),
-  Stream = startStream("id1", InitialEvents, MockStore),
+  Stream = stream:start("id1", InitialEvents, MockStore),
   {MockStore, Stream}.
 
 startStreamAndStoreError() ->
   MockStore = common_mocks:startMockStore(error, []),
-  Stream = startStream("id1", [], MockStore),
+  Stream = stream:start("id1", [], MockStore),
   {MockStore, Stream}.
 
 stopStreamAndStore({MockStore, Stream}) ->
@@ -203,7 +200,7 @@ not_listening_observer_should_not_block_stream_test_() -> {
     setup,
     fun () ->
       MockStore = common_mocks:startMockStore(),
-      Stream = spawn(fun () -> stream:stream("id", [], MockStore) end),
+      Stream = stream:start("id", [], MockStore),
       Observer = spawn(fun () ->
         receive
           stop -> ok

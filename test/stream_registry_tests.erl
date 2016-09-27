@@ -17,12 +17,9 @@ startMockStream(_, InitialEvents, _) ->
   end,
   MockStream().
 
-startStreamRegistry(Store, StartStream) ->
-  spawn(fun () -> stream_registry:streamRegistry(Store, StartStream) end).
-
 startAll() ->
   Store = common_mocks:startMockStore(),
-  Registry = startStreamRegistry(Store, fun startMockStream/3),
+  Registry = stream_registry:start(Store, fun startMockStream/3),
   {Store, Registry}.
 
 stopAll({Store, Registry}) ->
@@ -103,7 +100,7 @@ streamRegistry_getStream_should_load_from_store_test_() -> {
     setup,
     fun () ->
       Store = common_mocks:startMockStore(ok, [1]),
-      Registry = startStreamRegistry(Store, fun startMockStream/3),
+      Registry = stream_registry:start(Store, fun startMockStream/3),
       {Store, Registry}
     end,
     fun stopAll/1,

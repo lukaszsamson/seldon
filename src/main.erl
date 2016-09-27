@@ -4,8 +4,8 @@
 
 -spec bootstrap() -> {store(), pid()}.
 bootstrap() ->
-  Store = spawn_link(fun () -> store:store() end),
-  Registry = spawn_link(fun () -> stream_registry:streamRegistry(Store, fun stream:stream/3) end),
+  Store = store:start_link(),
+  Registry = stream_registry:start_link(Store, fun stream:init/3),
   {Store, Registry}.
 
 -spec shutdown({store(), pid()}) -> ok.

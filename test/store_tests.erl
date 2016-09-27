@@ -1,9 +1,6 @@
 -module(store_tests).
 -include_lib("eunit/include/eunit.hrl").
 
-spawnStore(InitialData) ->
-  spawn(fun () -> store:store(InitialData) end).
-
 stopStore(_, Store) ->
   Store ! stop.
 
@@ -18,7 +15,7 @@ store_load_should_return_events_for_streamId_test_() ->
   end,
   {
     foreachx,
-    fun spawnStore/1,
+    fun store:start/1,
     fun stopStore/2,
     [{InitialData, Test(ExpectedEvents)} || {InitialData, ExpectedEvents} <- [
       {#{}, []},
@@ -41,7 +38,7 @@ store_save_should_persist_events_for_streamId_test_() ->
   end,
   {
     foreachx,
-    fun spawnStore/1,
+    fun store:start/1,
     fun stopStore/2,
     [{InitialData, Test(ExpectedEvents)} || {InitialData, ExpectedEvents} <- [
       {#{}, [1, 2]},
