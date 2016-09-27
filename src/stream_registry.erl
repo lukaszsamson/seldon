@@ -4,6 +4,7 @@
 
 -spec streamRegistry(store(), stream_ctor()) -> no_return().
 streamRegistry(Store, StartStream) ->
+  process_flag(trap_exit, true),
   streamRegistry(#{}, Store, StartStream).
 
 -spec streamRegistry(#{stream_id() => list(event())}, store(), stream_ctor()) -> no_return().
@@ -20,7 +21,7 @@ streamRegistry(Streams, Store, StartStream) ->
         error ->
           case load(Store, StreamId) of
             {ok, Events} ->
-              {NewStream, _} = spawn_monitor(fun () ->
+              NewStream = spawn_link(fun () ->
                 StartStream(StreamId, Events, Store)
               end),
               {{ok, NewStream}, Streams#{StreamId => NewStream}};
@@ -33,7 +34,7 @@ streamRegistry(Streams, Store, StartStream) ->
     {From, getStreams} when is_pid(From) ->
       From ! Streams,
       streamRegistry(Streams, Store, StartStream);
-    {'DOWN', _, process, Pid, _} ->
+    {'EXIT', Pid, _} ->
       Ks = [K || {K, V} <- maps:to_list(Streams), V =:= Pid],
       streamRegistry(maps:without(Ks, Streams), Store, StartStream)
   end.

@@ -57,46 +57,47 @@ streamRegistry_getStream_should_start_new_stream_test_() -> {
     end
   }.
 
-streamRegistry_stop_should_stop_streams_test_() ->{
+streamRegistry_stop_should_stop_streams_test_() -> {
     setup,
     fun startAll/0,
     fun stopAll/1,
     fun ({_, Registry}) -> [
       begin
-       Registry ! {self(), getStream, "test"},
-       S = receive
+        Registry ! {self(), getStream, "test"},
+        S = receive
          {ok, Stream} -> Stream
-       end,
-       erlang:monitor(process, S),
-       Registry ! stop,
-       R = receive
+        end,
+        erlang:monitor(process, S),
+        Registry ! stop,
+        R = receive
          {'DOWN', _, process, _, normal} -> ok
-       end,
-       ?_assertEqual(ok, R)
+        after 10 -> fail
+        end,
+        ?_assertEqual(ok, R)
       end]
     end
   }.
 
-% TODO
-% streamRegistry_kill_should_stop_streams_test_() ->{
-%     setup,
-%     fun startAll/0,
-%     fun stopAll/1,
-%     fun ({_, Registry}) -> [
-%       begin
-%        Registry ! {self(), getStream, "test"},
-%        S = receive
-%          {ok, Stream} -> Stream
-%        end,
-%        erlang:monitor(process, S),
-%        exit(Registry, kill),
-%        R = receive
-%          {'DOWN', _, process, _, _} -> ok
-%        end,
-%        ?_assertEqual(ok, R)
-%       end]
-%     end
-%   }.
+streamRegistry_kill_should_stop_streams_test_() -> {
+    setup,
+    fun startAll/0,
+    fun stopAll/1,
+    fun ({_, Registry}) -> [
+      begin
+        Registry ! {self(), getStream, "test"},
+        S = receive
+         {ok, Stream} -> Stream
+        end,
+        erlang:monitor(process, S),
+        exit(Registry, kill),
+        R = receive
+          {'DOWN', _, process, _, _} -> ok
+        after 10 -> fail
+        end,
+        ?_assertEqual(ok, R)
+      end]
+    end
+  }.
 
 streamRegistry_getStream_should_load_from_store_test_() -> {
     setup,
